@@ -1,0 +1,89 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: petdeploy
+spec:
+  params:
+  - default: spring-petclinic
+    description: The application deployment name
+    name: APP_NAME
+    type: string
+  - default: https://github.com/lstocchi/spring-petclinic/
+    description: The application git repository url
+    name: APP_GIT_URL
+    type: string
+  - default: master
+    description: The application git repository revision
+    name: APP_GIT_REVISION
+    type: string
+  - default: spring-petclinic:latest
+    description: The application image stream
+    name: APP_IMAGE_STREAM
+    type: string
+  resources:
+  - name: petimg
+    type: image
+  tasks:
+  - name: git-clone
+    params:
+    - name: url
+      value: $(params.APP_GIT_URL)
+    - name: revision
+      value: $(params.APP_GIT_REVISION)
+    - name: deleteExisting
+      value: "true"
+    taskRef:
+      kind: ClusterTask
+      name: git-clone
+    workspaces:
+    - name: output
+      workspace: app-source
+  - name: build-jar
+    params:
+    - name: GOALS
+      value:
+      - package
+      - -DskipTests
+    runAfter:
+    - git-clone
+    taskRef:
+      kind: Task
+      name: maven-s2i
+    workspaces:
+    - name: maven-cache
+      workspace: maven-cache
+    - name: maven-settings
+      workspace: maven-settings
+    - name: source
+      workspace: app-source
+  - name: build-image
+    params:
+    - name: TLSVERIFY
+      value: "false"
+    - name: OUTPUT_IMAGE_STREAM
+      value: $(params.APP_IMAGE_STREAM)
+    resources:
+      outputs:
+      - name: image
+        resource: petimg
+    runAfter:
+    - build-jar
+    taskRef:
+      kind: Task
+      name: s2i-java-custom
+    workspaces:
+    - name: source
+      workspace: app-source
+  - name: deploy
+    params:
+    - name: DEPLOYMENT
+      value: $(params.APP_NAME)
+    runAfter:
+    - build-image
+    taskRef:
+      kind: Task
+      name: redeploy
+  workspaces:
+  - name: maven-cache
+  - name: maven-settings
+  - name: app-source

@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: redeploy
+spec:
+  params:
+  - name: DEPLOYMENT
+    type: string
+  steps:
+  - image: quay.io/openshift/origin-cli:latest
+    name: deploy
+    resources: {}
+    script: |-
+      #!/usr/bin/env bash
+      echo "Deploying $(params.DEPLOYMENT)"
+      oc get deployment $(params.DEPLOYMENT)
+      if [[ $? -ne 0 ]]
+      then
+          oc new-app -i $(params.DEPLOYMENT) --insecure-registry=true
+          oc expose svc $(params.DEPLOYMENT)
+      else
+          echo "Application already exists."
+      fi

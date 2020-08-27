@@ -1,0 +1,32 @@
+ 
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: petclinic-deploy-dev-run-
+spec:
+  params:
+  - name: APP_GIT_REVISION
+    value: master
+  - name: APP_GIT_URL
+    value: https://github.com/lstocchi/spring-petclinic/
+  - name: APP_IMAGE_STREAM
+    value: spring-petclinic:latest
+  - name: APP_NAME
+    value: spring-petclinic
+  pipelineRef:
+    name: petdeploy
+  resources:
+  - name: petimg
+    resourceRef:
+      name: petclinic-image
+  serviceAccountName: pipeline
+  workspaces:
+  - name: app-source
+    persistentVolumeClaim:
+      claimName: app-source-pvc
+  - configMap:
+      name: maven-settings
+    name: maven-settings
+  - name: maven-cache
+    persistentVolumeClaim:
+      claimName: maven-cache-pvc
