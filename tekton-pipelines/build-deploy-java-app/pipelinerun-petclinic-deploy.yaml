@@ -23,7 +23,7 @@ spec:
   workspaces:
   - name: app-source
     persistentVolumeClaim:
-      claimName: app-source-pvc
+      claimName: maven-repo-pvc
   - configMap:
       name: maven-settings
     name: maven-settings

@@ -1,0 +1,30 @@
+jobs:
+- job: myjob
+  displayName: MyJob
+  pool:
+    name: 'Default'
+  steps:
+  
+  - task: Maven@3
+    inputs:
+      mavenPomFile: 'pom.xml'
+      mavenOptions: '-Xmx3072m'
+      javaHomeOption: 'JDKVersion'
+      jdkVersionOption: '1.11'
+      jdkArchitectureOption: 'x64'
+      publishJUnitResults: false
+      testResultsFiles: '**/TEST-*.xml'
+      goals: 'package'
+  # Install oc so that it can be used within a 'script' or bash 'task'
+  - task: oc-setup@2
+    displayName: Setup oc
+    inputs:
+      openshiftService: 'my_openshift_connection'
+      version: 4.3
+  # A script task making use of 'oc'    
+  - script: |
+      oc project ${PROJECT} || oc new-project ${PROJECT}
+      oc new-build java~${REPO} --name ${APPNAME}
+      oc start-build ${APPNAME} --from-dir . --follow
+      oc new-app ${APPNAME}:latest
+    displayName: Build and Deploy
